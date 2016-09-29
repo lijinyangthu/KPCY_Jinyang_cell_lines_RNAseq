@@ -6,7 +6,7 @@
 #BSUB -e e.seqtk
 #BSUB -o o.seqtk
 
-declare -a fastq=( ` find data/fastq/ -name "*.fastq.gz" | xargs -n1 -I "{}" basename {} .fastq.gz ` )
+declare -a fastq=( ` find data/fastq/ -maxdepth 1 -name "*.fastq.gz" | xargs -n1 -I "{}" basename {} .fastq.gz ` )
 
 for i in "${fastq[@]}";
 do
