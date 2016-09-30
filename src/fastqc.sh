@@ -17,4 +17,4 @@ fi
 
 # run fastqc
 
-fastqc -f fastq -o fastqc/ *.fastq.gz
+fastqc -f fastq -o fastqc/ *.trim.fastq.gz

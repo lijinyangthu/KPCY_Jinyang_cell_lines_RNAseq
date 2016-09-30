@@ -1,0 +1,12 @@
+Status	data/bam/PD2699_C4_1_BULK-Aligned.sortedByCoord.out.bam	data/bam/PD2699_C4_1_YFP-Aligned.sortedByCoord.out.bam	data/bam/PD6322_C5_YFP-Aligned.sortedByCoord.out.bam	data/bam/PD6419_C1_BULK-Aligned.sortedByCoord.out.bam	data/bam/PD6419_C1_YFP-Aligned.sortedByCoord.out.bam	data/bam/PD6422_C5_BULK-Aligned.sortedByCoord.out.bam	data/bam/PD6499_C4_BULK-Aligned.sortedByCoord.out.bam	data/bam/PD6499_C4_YFP-Aligned.sortedByCoord.out.bam	data/bam/PD6620_C1_BULK-Aligned.sortedByCoord.out.bam	data/bam/PD6620_C1_YFP-Aligned.sortedByCoord.out.bam
+Assigned	35516579	33149805	22893685	33161072	42471579	51179727	26117304	34429985	33765074	43874093
+Unassigned_Ambiguity	436181	378722	245055	363605	479329	598611	306181	402477	380217	502692
+Unassigned_MultiMapping	8212261	6771866	4871011	6636839	8432332	10898799	5300870	6889410	6784375	8885040
+Unassigned_NoFeatures	7963086	6810098	5893513	9437548	9114958	17893146	5465237	7083745	7031069	9156444
+Unassigned_Unmapped	0	0	0	0	0	0	0	0	0	0
+Unassigned_MappingQuality	0	0	0	0	0	0	0	0	0	0
+Unassigned_FragmentLength	0	0	0	0	0	0	0	0	0	0
+Unassigned_Chimera	0	0	0	0	0	0	0	0	0	0
+Unassigned_Secondary	0	0	0	0	0	0	0	0	0	0
+Unassigned_Nonjunction	0	0	0	0	0	0	0	0	0	0
+Unassigned_Duplicate	0	0	0	0	0	0	0	0	0	0

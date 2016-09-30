@@ -1,2 +1,8 @@
 # ignore src/reference for STAR
 src/reference/*
+
+# ignore all fastq directory files
+data/fastq/*
+
+# ignore all bam files
+data/bam/*

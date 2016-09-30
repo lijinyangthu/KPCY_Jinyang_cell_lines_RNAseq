@@ -27,10 +27,10 @@ module load STAR-2.5.2a
 # alignment to mm10 genome
 REFERENCE="/home/dballi/KPCY_Jinyang_cell_lines/src/reference"
 ANNO="/home/dballi/KPCY_Jinyang_cell_lines/src/reference/genes_mm10_ercc.gtf"
-DATE=(date +'%Y-%m-%d')
+DATE=`date +'%Y-%m-%d'`
 
 # load files into array
-declare -a samples=(`find data/fastq/ -name "*_R1.trim.fastq.gz" | xargs -n1 -I "{}" basename {} _R1.trim.fastq.gz`)
+declare -a samples=(`find data/fastq/ -maxdepth 1 -name "*_R1.trim.fastq.gz" | xargs -n1 -I "{}" basename {} _R1.trim.fastq.gz`)
 
 for i in "${samples[@]}"
 do
@@ -53,7 +53,6 @@ featureCounts \
 -t exon \
 -g gene_id \
 -o results/"$DATE"-star-counts.txt \
-`lh data/bam/*.bam`
-#`find data/bam/ -iname "*.bam" -mtime -1`
+`find data/bam/ -iname "*.bam" -mtime -1`
 
 exit 0
