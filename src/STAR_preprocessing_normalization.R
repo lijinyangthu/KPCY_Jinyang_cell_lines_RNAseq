@@ -85,6 +85,8 @@ export(tpm, file = paste0("data/", Sys.Date(), "-tpm.csv"))
                           primary = stringr::str_split_fixed(names, "_", 2)[,1],
                           yfp_bulk = regmatches(names(tpm), regexpr("(BULK|YFP)", names(tpm), perl = TRUE))))
 
+annotation <- left_join(annotation, read_sum_info)
+
 # PCA analysis + plot against total read sum number
 (pca_su <- PCA_analysis(expr_obj = tpm, annotation = annotation, colors = NULL, top_var = 1000) +
   geom_point(size = 4, aes(col = yfp_bulk)) + theme(legend.position = "bottom"))
@@ -99,7 +101,7 @@ pheatmap::pheatmap(tpm_pca, scale = "row", fontsize_col = 6,
                    annotation_names_col = FALSE,
                    clustering_distance_rows = "correlation", 
                    clustering_distance_cols = "correlation",
-                   annotation_col = anno_df[, c("yfp_bulk", "Moffitt_Tumor_type", "Moffitt_Stromal_type")],
+                   annotation_col = anno_df[, c("yfp_bulk", "moffitt_tumor_type", "moffitt_stromal_type")],
                    file = "results/PCA-heatmap.pdf")
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
