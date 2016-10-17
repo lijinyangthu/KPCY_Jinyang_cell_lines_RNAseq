@@ -10,9 +10,18 @@ library("reshape2")
 library("data.table")
 library("magrittr")
 source("src/functions.R")
+library("rio")
+unloadNamespace("biomaRt")
 
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+# set graphics parameters 
 op <- par(mar = c(8, 5, 4, 2)+ 0.1)
 options(op)
+# set seed for reproducibility
+set.seed(123)
+#
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # use data.table fread to load file.  will be loaded as a data.table.  ??data.table
 counts <- fread("results/2016-09-29-star-counts.txt")
@@ -68,96 +77,33 @@ sub_counts
 tpm <- STAR_to_TPM(sub_counts)
 dim(tpm)
 # 23513 11
-
-# filter out lowly expressed transcripts for PCA analysis
-isexpr <- rowSums(tpm >= 1) >= 10
-table(isexpr)
-# FALSE  TRUE
-# 10363 13150
-
-tpm_filt <- tpm[isexpr,]
-
-# running PCA on 1000 most variable transcripts
-rv <- tpm_filt %>% select(-Geneid) %>% rowVars()
-sel <- order(rv, decreasing = TRUE)[1:1000]
-
-# using data.table syntax to log2 transform only rows in sel and columns not Geneid
-tpm_pca <- log2(tpm_filt[sel, !"Geneid", with = FALSE] + 1)
-
-# PCA
-pc <- prcomp(t(tpm_pca))
+# save to data/
+export(tpm, file = paste0("data/", Sys.Date(), "-tpm.csv"))
 
 # create annotation table
-(annotation <- data.table(sample_id = names(tpm_filt)[grep("PD", names(tpm_filt))],
+(annotation <- data.table(sample_id = names(tpm)[grep("PD", names(tpm))],
                           primary = stringr::str_split_fixed(names, "_", 2)[,1],
-                          yfp_bulk = c("BULK", "YFP")))
+                          yfp_bulk = regmatches(names(tpm), regexpr("(BULK|YFP)", names(tpm), perl = TRUE))))
 
-# sample annotations and merging with read_sum_info
-pca_dt <- data.table(sample_id = colnames(tpm_pca), pc$x)
-pca_dt <- left_join(pca_dt, read_sum_info, by = "sample_id")
-pca_dt <- left_join(pca_dt, annotation)
+# PCA analysis + plot against total read sum number
+(pca_su <- PCA_analysis(expr_obj = tpm, annotation = annotation, colors = NULL, top_var = 1000) +
+  geom_point(size = 4, aes(col = yfp_bulk)) + theme(legend.position = "bottom"))
 
-# colors_primary <- RColorBrewer::brewer.pal(10, "Paired")
-
-# calculate variance explained by PC1 and PC2
-varExp <- (pc$sdev^2/sum(pc$sdev^2) * 100)
-
-# inital QC assesment using principal components 
-(pcaplot <- ggplot(pca_dt, aes(x = PC1, y = PC2)) + 
-  geom_text_repel(data = pca_dt, aes(label = sample_id)) + 
-  geom_point(size = 4, aes(col = total_read_count, shape = primary)) + 
-  ggtitle("Principal Components") +
-  xlab(paste0("PC1\n(", round(varExp[1], 2), "% variance)")) +
-  ylab(paste0("PC2\n(", round(varExp[2], 2), "% variance)")) +
-  scale_color_gradient(low = "lightblue", high = "red") + 
-  pca_theme() + theme(legend.position = "right"))
-ggsave(pcaplot, file = "results/2016-09-29-PCA-noERCCnormalization-allsamples.pdf", width = 6, height = 6)
+# ggsave(pca_su, file = )
 
 # heatmap of same genes as in PCA
 anno_df <- data.frame(annotation, row.names = annotation[,1])
+
 pheatmap::pheatmap(tpm_pca, scale = "row", fontsize_col = 6,
                    show_rownames = FALSE, 
                    annotation_names_col = FALSE,
                    clustering_distance_rows = "correlation", 
                    clustering_distance_cols = "correlation",
-                   annotation_col = anno_df)
+                   annotation_col = anno_df[, c("yfp_bulk", "Moffitt_Tumor_type", "Moffitt_Stromal_type")],
+                   file = "results/PCA-heatmap.pdf")
 
-tpm
-INDEX = c(immune_suppresion_index_genes)
-# dplyr function chain to make a boxplot of log-average of genes in index 
-# will need ConsensusCluster Annotations 
-index_boxplot <- function(INDEX, TITLE){
-  suppressWarnings(
-    suppressMessages(
-      tpm %>% 
-        data.table() %>% 
-        dplyr::filter(Geneid %in% INDEX) %>% 
-        select(contains("BULK")) %>% 
-        melt(variable.name = "sample_id", value.name = "TPM") %>% 
-        group_by(sample_id) %>% 
-        summarize(gm = geometric_mean(TPM)) %>% 
-        # left_join(., gsva_anno_merge[,1:2], by = "sample_id") %>% 
-        ggplot(., aes(x = Moffitt_tumor_type, y = log2(gm + 1), fill = Moffitt_tumor_type)) + geom_boxplot() + theme_bw() + 
-        ggtitle(paste0(TITLE)) + xlab(" ") + ylab("log-average expression:\nlog2(TPM + 1)\n") +
-        scale_fill_manual(values = colors_primary) + 
-        ylim(c(0, 5)) +
-        theme(
-          panel.grid.major.x = element_blank(),
-          panel.grid.minor.x = element_blank(),
-          panel.grid.major.y = element_blank(),
-          panel.grid.minor.y = element_blank(),
-          legend.position = "none"
-        )
-    )
-  )
-}
-
-cyt_index_genes = c("Gzma", "Prf1")
-immune_suppresion_index_genes = c("Ctla4", "Pdcd1", "Cd274", "Pdcd1lg2", "Ido1", "Ido2", "Lag3","Adora2a", "Havcr2", "Tigit", "Vtcn1", "Vsir")
-
-moffitt_color <- RColorBrewer::brewer.pal(9, "Paired")[8:9]
-cyt_index_boxplot <- index_boxplot(cyt_index_genes, "Cytolytic Index")
-immune_suppresion_boxplot <- index_boxplot(immune_suppresion_index_genes, "Immune Suppresion Index")
-p <- gridExtra::arrangeGrob(cyt_index_boxplot, immune_suppresion_boxplot, ncol = 2)
-plot(p)
-ggsave("Results/2016-09-28-Cyt-Suppresion-indexes.pdf", p, width = 6, height = 5)
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
+#
+# data should be ready for further analysis
+#
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
