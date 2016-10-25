@@ -1,6 +1,5 @@
 # common functions
 
-
 # function to combine multiple Sailfish output files into merged table and save to RDS
 combine_sailfish <- function(files, target, target_file) {
   
@@ -24,7 +23,6 @@ combine_sailfish <- function(files, target, target_file) {
   saveRDS(cnt_tmp, file = target_file)
   return(cnt_tmp)
 }
-
 
 # function to convert STAR/featureCounts output to transcripts per million (TPM)
 STAR_to_TPM <- function(counts, gene_exon_length = NULL) {
@@ -159,6 +157,43 @@ pca_theme <- function(base_size = 12, base_family = "Helvetica") {
     panel.background = element_rect(color = 'black',fill = NA))
 }
 
+# function to run statistical tests of GSVA results against subtype level consensus clustering
+gene_set_statistic_test <- function(gsva_result, design_matrix, contrast_matrix){
+  #' @param gsva_result matrix from GSVA output. 
+  #' @param design_matrix matrix of column names of GSVA ouput with appropriate comparisons. See limma/edgeR design matrix.
+  #' @param contrast_matrix matrix of comparison names between design_matrix groups (e.g. Basal-Classical)
+  #' @examples
+  #' p_m <- paste(annotation[match(names(gsva_tpm), annotation$sample_id), ]$moffitt_tumor_type, sep = '')
+  #' p_m <- factor(p_m)
+  #' pm_design <- model.matrix(~0+p_m)
+  #' colnames(pm_design) <- c("Basal_like", "Classical")
+  #' pm_design
+  #' ContrastMatrix <- limma::makeContrasts(Basal_like-Classical, levels = pm_design)
+  #' 
+  #' immune_res <- gene_set_statistic_test(gsva_result = immune_gsva, design_matrix = pm_design, contrast_matrix = ContrastMatrix) 
+  #' immune_res %<>% arrange(desc(logFC)) %>% data.table()
+  #' immune_res
+  #' rio::export(immune_res, file = paste0("Results/", Sys.Date(), "-GSVA-immune-bulk.csv"))
+  
+  packs <- c("limma", "data.table", "edgeR", "tidyverse", "magrittr")
+  missing_packs <- setdiff(packs, row.names(installed.packages()))
+  if(length(missing_packs >= 1)){
+    install.packages(missing_packs)
+    lapply(packs, library, character = TRUE)
+  } else {
+    lapply(packs, library, character = TRUE)
+  }
+  
+  fit_tmp <- lmFit(gsva_result, design = design_matrix)
+  fit_tmp <- contrasts.fit(fit_tmp, contrast_matrix)
+  fit_tmp <- eBayes(fit_tmp)
+  print(summary(decideTests(fit_tmp)))
+  
+  res <- topTable(fit_tmp, adjust = "BH", sort = "l", n = Inf, p = 0.05)
+  
+  res <- rownames_to_column(res, "Gene_set")
+  return(res)
+}
 
 # function to calculate total exonic length of a gene. potential input for STAR_to_TPM
 gene_exon_length <- function(gtf) {
