@@ -23,6 +23,10 @@ set.seed(123)
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# extract gene exon length info from gtf
+gene_length_info <- gene_exon_length("data/genes.gtf")
+names(gene_length_info)[1] <- "Geneid"
+
 # use data.table fread to load file.  will be loaded as a data.table.  ??data.table
 counts <- fread("results/2016-09-29-star-counts.txt")
 glimpse(counts)
