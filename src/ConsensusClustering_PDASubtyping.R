@@ -56,10 +56,15 @@ clustering_tpm_moffitt <- tpm %>% filter(Geneid %in% moffitt$Geneid) %>% data.fr
 # convert to data.frame then matrix for CCP algorithm
 row.names(clustering_tpm_moffitt) <- clustering_tpm_moffitt$Geneid
 clustering_tpm_moffitt$Geneid <- NULL
+isexpr <- rowSums(clustering_tpm_moffitt) > 1
+
+clustering_tpm_moffitt <- clustering_tpm_moffitt[isexpr, ]
+
+log_moffitt <- log2(clustering_tpm_moffitt + 1)
 
 # ConsensusClusterPlus function
 title <- "results/consensuscluster-Moffitt/"
-moffitt_res <- ConsensusClusterPlus(as.matrix(clustering_tpm_moffitt), maxK = 4, reps = 1000, pItem = 0.8,
+moffitt_res <- ConsensusClusterPlus(as.matrix(log_moffitt), maxK = 4, reps = 1000, pItem = 0.8,
                                pFeature = 1, title = title, clusterAlg = "hc", distance = "pearson",
                                seed = 42, plot = "pdf")
 
@@ -75,13 +80,13 @@ dt_icl %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 clust1 <- dt_icl %>%
   filter(k == 2 & itemConsensus > 0.9 & cluster == 1) %>%
   dplyr::select(cluster, item, itemConsensus)
-clust1 # 7
+clust1 # 8
 
 # select sample in cluster 2 with consensus score greater than 0.9
 clust2 <- dt_icl %>%
   filter(k == 2 & itemConsensus > 0.9 & cluster == 2) %>%
   dplyr::select(cluster, item, itemConsensus)
-clust2 # 3
+clust2 # 2
 
 table(clust2$item %in% clust1$item); table(clust1$item %in% clust2$item)
 
@@ -117,9 +122,12 @@ clustering_tpm_stromal <- tpm %>% filter(Geneid %in% moffitt_stromal$Geneid) %>%
 row.names(clustering_tpm_stromal) <- clustering_tpm_stromal$Geneid
 clustering_tpm_stromal$Geneid <- NULL
 
+isexpr <- rowSums(clustering_tpm_stromal) >= 0
+clustering_tpm_stromal <- clustering_tpm_stromal[isexpr,]
+log_stromal <- log2(clustering_tpm_stromal + 1)
 # ConsensusClusterPlus function
 title <- "results/consensuscluster-Moffitt-stromal/"
-moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(clustering_tpm_stromal), maxK = 4, reps = 1000, pItem = 0.8,
+moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(log_stromal), maxK = 4, reps = 1000, pItem = 0.8,
                                     pFeature = 1, title = title, clusterAlg = "hc", distance = "pearson",
                                     seed = 42, plot = "pdf")
 
@@ -131,29 +139,22 @@ icl_strom[["clusterConsensus"]]
 dt_strom <- data.table(icl_strom$itemConsensus)
 dt_strom %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 
-dt_strom %>% filter(k == 3 & cluster == 1) %>% summarise(range = mean(itemConsensus))
-dt_strom %>% filter(k == 3 & cluster == 2) %>% summarise(range = mean(itemConsensus))
-dt_strom %>% filter(k == 3 & cluster == 3) %>% summarise(range = mean(itemConsensus))
+dt_strom %>% filter(k == 2 & cluster == 1) %>% summarise(range = mean(itemConsensus))
+dt_strom %>% filter(k == 2 & cluster == 2) %>% summarise(range = mean(itemConsensus))
 
 # select sample in cluster 1 with consensus score greater than 0.79
 (clust1_strom <- dt_strom %>%
-  filter(k == 3 & itemConsensus > 0.6 & cluster == 1) %>%
+  filter(k == 2 & itemConsensus > 0.6 & cluster == 1) %>%
   dplyr::select(cluster, item, itemConsensus))#  %>% summarise(n_dist = n_distinct(item))
-#  ZERO
+#  3
 
 # select sample in cluster 2 with consensus score greater than 0.4
 (clust2_strom <- dt_strom %>%
-  filter(k == 3 & itemConsensus > 0.6 & cluster == 2) %>%
+  filter(k == 2 & itemConsensus > 0.6 & cluster == 2) %>%
   dplyr::select(cluster, item, itemConsensus)) # %>% summarise(n_dist = n_distinct(item))
 # 2
 
-# select sample in cluster 3 with consensus score greater than 0.32
-(clust3_strom <-  dt_strom %>%
-  filter(k == 3 & itemConsensus > 0.6 & cluster == 3) %>%
-  dplyr::select(cluster, item, itemConsensus)) #   %>% summarise(n_dist = n_distinct(item))
-# 2
-
-table(clust2_strom$item %in% clust3_strom$item)
+table(clust2_strom$item %in% clust1_strom$item)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # Merged annnotation file for all samples versus selected tumor type definitions
@@ -166,11 +167,11 @@ pda_typing <- data.table(sample_id = colnames(tpm[,grep("PD", colnames(tpm)), wi
 annotation <- left_join(annotation, pda_typing, by = "sample_id")
 annotation$moffitt_tumor_type[annotation$sample_id %in% clust1$item] <- "Clust 1"
 annotation$moffitt_tumor_type[annotation$sample_id %in% clust2$item] <- "Clust 2"
-annotation$moffitt_stromal_type[annotation$sample_id %in% clust1_strom$item] <- "unknown stroma"
+annotation$moffitt_stromal_type[annotation$sample_id %in% clust1_strom$item] <- "Stromal 1"
 annotation$moffitt_stromal_type[annotation$sample_id %in% clust2_strom$item] <- "Stromal 2"
-annotation$moffitt_stromal_type[annotation$sample_id %in% clust3_strom$item] <- "Stromal 3"
 annotation$moffitt_stromal_type[annotation$yfp_bulk == "YFP"] <- "NA"
-annotation
+
+annotation %>% filter(yfp_bulk == "BULK")
 
 export(annotation, file = "results/annotation.csv")
 
