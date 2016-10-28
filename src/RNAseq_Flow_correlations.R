@@ -24,4 +24,4 @@ setnames(flowdata, c("CD4_T_cells", "CD8_T_cels", "gMDSCs", "DCs", "CD4_CD8_null
 flowdata <- flowdata[, sample_id := corrected_names]
 
 
-left_join(annotation, flowdata, by = "sample_id")
+left_join(annotation, flowdata, by = "sample_id") %>% filter(yfp_bulk == "BULK")
