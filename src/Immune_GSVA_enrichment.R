@@ -34,13 +34,16 @@ set.seed(123)
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-signature <- read.table("/Users/dballi/Projects/PDA_TCGA_UNC_RNAseq_Immune/data/bindea_genesig.txt", 
-                        header = TRUE, sep = "\t", col.names = c("cell_type", "hgnc_symbol"))
+signature <- read.table("data/bindea_genesig.txt", 
+                        header = TRUE, sep = "\t", 
+                        col.names = c("cell_type", "hgnc_symbol"))
 table(signature$cell_type)
 
 immunome <- right_join(human_mouse_convesion, signature, by = "hgnc_symbol") %>%
     dplyr::select(Geneid, hgnc_symbol, cell_type) %>%
     unique() %>% na.omit() %>% data.table()
+
+# using Bindea's gene signature but adding markers for MDSCs (CD11b, CD33, CD14, CD15)
 
 Immune_PDA_Signature <- list(aDC = immunome[immunome$cell_type == "aDC", ]$Geneid,
                              B_cells = immunome[immunome$cell_type == "B_cells", ]$Geneid,
@@ -71,12 +74,11 @@ immunome_tpm <- tpm %>% filter(Geneid %in% immunome$Geneid) %>% select(matches("
 row.names(immunome_tpm) <- immunome_tpm$Geneid
 immunome_tpm$Geneid <- NULL
 
-
-
 immunome_tpm <- log2(immunome_tpm + 1)
 # isexpr <- rowSums(immunome_tpm) >= 1 ) >= ncol(immunome_tpm) * 0.3
 isexpr <- rowSums(immunome_tpm) >= 1
 
+# gene set variation analysis 
 gsva_immunome <- gsva(as.matrix(immunome_tpm[isexpr,]), Immune_PDA_Signature, 
                       rnaseq = TRUE, verbose = TRUE, mx.diff = TRUE)$es.obs
 
@@ -185,7 +187,7 @@ colnames(pm_design) <- c("Basal_like", "Classical")
 pm_design
 ContrastMatrix <- limma::makeContrasts(Basal_like-Classical, levels = pm_design)
 
-# function to run statistical tests of GSVA results against subtype level consensus clustering
+# function to run statistical tests of GSVA results against subtype level consensus clustering (found in src/functions.R)
 # immune GSEA gene set
 immune_res <- gene_set_statistic_test(gsva_result = immune_gsva, design_matrix = pm_design, contrast_matrix = ContrastMatrix) 
 immune_res %<>% arrange(desc(logFC)) %>% data.table()
@@ -219,7 +221,6 @@ rio::export(reactome_res, file = paste0("Results/", Sys.Date(), "-GSVA-reactome-
 ###
 ### everything below is saving for later reference
 ###
-
 ###
 
 

@@ -23,7 +23,7 @@ set.seed(123)
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# extract gene exon length info from gtf
+# extract gene exon length info from gtf (function found in src/functions.r)
 gene_length_info <- gene_exon_length("data/genes.gtf")
 names(gene_length_info)[1] <- "Geneid"
 
@@ -65,7 +65,7 @@ counts %>%
 dev.copy(pdf, file = paste0("results/", Sys.Date(), "-KPCY-cell-lines.pdf"))
 dev.off()
 
-# drop samples with less than 1e6 total reads, no ERCCs, and keep Geneid
+# drop samples with less than 1e6 total reads and keep Geneid
 (poor_samples <- read_sum_info %>% 
   filter(read_sum < 1e6) %>% 
   select(sample_id) %>% 
@@ -77,7 +77,7 @@ sub_counts <- counts %>%
   select(-matches(non_geneid))
 sub_counts
 
-# convert counts to TPM 
+# convert counts to TPM (function found in src/functions.R)
 tpm <- STAR_to_TPM(sub_counts)
 dim(tpm)
 # 23513 11
