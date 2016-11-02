@@ -37,13 +37,27 @@ set.seed(123)
 signature <- read.table("data/bindea_genesig.txt", 
                         header = TRUE, sep = "\t", 
                         col.names = c("cell_type", "hgnc_symbol"))
-table(signature$cell_type)
+names(signature)
+mdsc <- data.frame(cell_type = "MDSC", hgnc_symbol = c("CD11B", "CD33", "CD14", "CD15"))
+Th17_cells <- data.frame(cell_type = "Th17_cells", hgnc_symbol = c("BTLA", "CD200", "CD99"))
+cyt_index <- data.frame(cell_type = "CYT_index", hgnc_symbol = c("PRF1", "GZMA"))
+immune_suppresion_index <- data.frame(cell_type = "Immune_suppression_index", hgnc_symbol =  c("CTLA4", "PDCD1", "CD274", "PDCD1LG2", "IDO1", 
+                                                                "IDO2", "LAG3", "ADORA2A", "HAVCR2", "TIGIT", "VTCN1", "C10orf54"))
+treg <- data.frame(cell_type = "TReg", hgnc_symbol = c("IL2RA", "FOXP3"))
+
+signature <- rbind(signature, mdsc, treg, Th17_cells, cyt_index, immune_suppresion_index)
 
 immunome <- right_join(human_mouse_convesion, signature, by = "hgnc_symbol") %>%
     dplyr::select(Geneid, hgnc_symbol, cell_type) %>%
     unique() %>% na.omit() %>% data.table()
 
-# using Bindea's gene signature but adding markers for MDSCs (CD11b, CD33, CD14, CD15)
+# using Bindea's gene signature 
+# but adding markers for MDSCs (CD11b (Itgam), CD33, CD14, CD15 (Fut4))
+# adding CYT index genes (GZMA, PRF1)
+# adding Immune suppression index genes ()
+
+head(human_mouse_convesion$hgnc_symbol)
+human_mouse_convesion[grep("IL2RA", human_mouse_convesion$hgnc_symbol),]
 
 Immune_PDA_Signature <- list(aDC = immunome[immunome$cell_type == "aDC", ]$Geneid,
                              B_cells = immunome[immunome$cell_type == "B_cells", ]$Geneid,
@@ -66,9 +80,12 @@ Immune_PDA_Signature <- list(aDC = immunome[immunome$cell_type == "aDC", ]$Genei
                              Tfh = immunome[immunome$cell_type == "TFH", ]$Geneid,
                              Tgd = immunome[immunome$cell_type == "Tgd", ]$Geneid,
                              Th1_cells = immunome[immunome$cell_type == "Th1_cells", ]$Geneid,
-                             Th17_cells = c("BTLA", "CD200", "CD99"),
+                             Th17_cells = immunome[immunome$cell_type == "Th17_cells", ]$Geneid,
                              Th2_cells = immunome[immunome$cell_type == "Th2_cells", ]$Geneid,
-                             Treg = immunome[immunome$cell_type == "TReg", ]$Geneid)
+                             Treg = immunome[immunome$cell_type == "TReg", ]$Geneid,
+                             MDSC = immunome[immunome$cell_type == "MDSC", ]$Geneid,
+                             CYT_index = immunome[immunome$cell_type == "CYT_index", ]$Geneid,
+                             Immune_suppression_index = immunome[immunome$cell_type == "Immune_suppression_index", ]$Geneid)
 
 immunome_tpm <- tpm %>% filter(Geneid %in% immunome$Geneid) %>% select(matches("Geneid|BULK")) %>% data.frame()
 row.names(immunome_tpm) <- immunome_tpm$Geneid
@@ -82,7 +99,7 @@ isexpr <- rowSums(immunome_tpm) >= 1
 gsva_immunome <- gsva(as.matrix(immunome_tpm[isexpr,]), Immune_PDA_Signature, 
                       rnaseq = TRUE, verbose = TRUE, mx.diff = TRUE)$es.obs
 
-pheatmap::pheatmap(gsva_immunome, 
+pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "firebrick3"))(2345),
                    annotation_col = anno_df[, c("yfp_bulk", "Moffitt_Tumor_type", "Moffitt_Stromal_type")])
 
 #-------------------------------------------------------------------------------------------------------------------------------
