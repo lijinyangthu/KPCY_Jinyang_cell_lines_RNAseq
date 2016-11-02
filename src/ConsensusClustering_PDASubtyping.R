@@ -33,10 +33,10 @@ human_mouse_convesion %<>% data.table() %>%  dplyr::select(Geneid, hgnc_symbol, 
 human_mouse_convesion
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
-# consensusclusteringplus definiation of KPCX with Moffitt Classical and Basal-like tumor types
+# consensusclusteringplus definiation of KPCX with Moffitt Classical and Basal-like tumor types gene signatures
 #------------------------------------------------------------------------------------------------------------------------------------------------------
-basal <- read.delim("~/Projects/KPCY_RNAseq_EMT/GeneSignature/Moffitt_Basal-like_Siganture.txt", col.names = "hgnc_symbol")
-classic <- read.delim("~/Projects/KPCY_RNAseq_EMT/GeneSignature/Moffitt_Classical_Siganture.txt", col.names = "hgnc_symbol")
+basal <- read.delim("data/Moffitt_Basal-like_Siganture.txt", col.names = "hgnc_symbol")
+classic <- read.delim("data/Moffitt_Classical_Siganture.txt", col.names = "hgnc_symbol")
 
 basal$Subtype <- c(rep("Basal-like", 25))
 classic$Subtype <- c(rep("Classical", 25))
@@ -56,13 +56,13 @@ clustering_tpm_moffitt <- tpm %>% filter(Geneid %in% moffitt$Geneid) %>% data.fr
 # convert to data.frame then matrix for CCP algorithm
 row.names(clustering_tpm_moffitt) <- clustering_tpm_moffitt$Geneid
 clustering_tpm_moffitt$Geneid <- NULL
-isexpr <- rowSums(clustering_tpm_moffitt) > 1
 
+isexpr <- rowSums(clustering_tpm_moffitt) > 1
 clustering_tpm_moffitt <- clustering_tpm_moffitt[isexpr, ]
 
 log_moffitt <- log2(clustering_tpm_moffitt + 1)
 
-# ConsensusClusterPlus function
+# ConsensusClusterPlus function with K set to 4 
 title <- "results/consensuscluster-Moffitt/"
 moffitt_res <- ConsensusClusterPlus(as.matrix(log_moffitt), maxK = 4, reps = 1000, pItem = 0.8,
                                pFeature = 1, title = title, clusterAlg = "hc", distance = "pearson",
@@ -88,7 +88,7 @@ clust2 <- dt_icl %>%
   dplyr::select(cluster, item, itemConsensus)
 clust2 # 2
 
-table(clust2$item %in% clust1$item); table(clust1$item %in% clust2$item)
+table(clust2$item %in% clust1$item)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # consensusclusteringplus definiation of KPCX with Moffitt normal and activated stroma types only in BULK samples
@@ -122,7 +122,7 @@ clustering_tpm_stromal <- tpm %>% filter(Geneid %in% moffitt_stromal$Geneid) %>%
 row.names(clustering_tpm_stromal) <- clustering_tpm_stromal$Geneid
 clustering_tpm_stromal$Geneid <- NULL
 
-isexpr <- rowSums(clustering_tpm_stromal) >= 0
+isexpr <- rowSums(clustering_tpm_stromal) > 1
 clustering_tpm_stromal <- clustering_tpm_stromal[isexpr,]
 log_stromal <- log2(clustering_tpm_stromal + 1)
 # ConsensusClusterPlus function
