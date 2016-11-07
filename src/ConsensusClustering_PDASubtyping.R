@@ -33,7 +33,7 @@ human_mouse_convesion %<>% data.table() %>%  dplyr::select(Geneid, hgnc_symbol, 
 human_mouse_convesion
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
-# consensusclusteringplus definiation of KPCX with Moffitt Classical and Basal-like tumor types gene signatures
+# ConsensusClusterPlus definiation of KPCY with Moffitt (Nature Medicine 2015) Classical and Basal-like tumor types gene signatures
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 basal <- read.delim("data/Moffitt_Basal-like_Siganture.txt", col.names = "hgnc_symbol")
 classic <- read.delim("data/Moffitt_Classical_Siganture.txt", col.names = "hgnc_symbol")
@@ -62,7 +62,7 @@ clustering_tpm_moffitt <- clustering_tpm_moffitt[isexpr, ]
 
 log_moffitt <- log2(clustering_tpm_moffitt + 1)
 
-# ConsensusClusterPlus function with K set to 4 
+# ConsensusClusterPlus function with K set to 4
 title <- "results/consensuscluster-Moffitt/"
 moffitt_res <- ConsensusClusterPlus(as.matrix(log_moffitt), maxK = 4, reps = 1000, pItem = 0.8,
                                pFeature = 1, title = title, clusterAlg = "hc", distance = "pearson",
