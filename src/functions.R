@@ -45,7 +45,7 @@ STAR_to_TPM <- function(counts, gene_exon_length = NULL) {
   # if counts is data.table = convert to df and set row.names equal to Geneid
   if( class(counts)[1] == "data.table" )
     counts_temp <- counts %>% 
-    select(-matches("Geneid|Strand|Chr|Start|End|Length")) %>% 
+    dplyr::select(-matches("Geneid|Strand|Chr|Start|End|Length")) %>% 
     data.frame()
   row.names(counts_temp) <- counts$Geneid
   
@@ -99,7 +99,7 @@ PCA_analysis <- function(expr_obj, annotation, colors, top_var = 1000) {
   
   # running PCA on 1000 most variable transcripts
   rv <- expr_filt %>% 
-    select(-Geneid) %>% 
+    dplyr::select(-Geneid) %>% 
     rowVars()
   
   sel <- order(rv, decreasing = TRUE)[1:top_var]
