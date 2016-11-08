@@ -13,6 +13,7 @@ library("magrittr")
 source("src/functions.R")
 library("rio")
 unloadNamespace("biomaRt")
+unloadNamespace("GenomicFeatures")
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 #
@@ -29,10 +30,10 @@ gene_length_info <- gene_exon_length("data/genes.gtf")
 names(gene_length_info)[1] <- "Geneid"
 
 # use data.table fread to load file.  will be loaded as a data.table.  ??data.table
-counts <- fread("results/2016-09-29-star-counts.txt")
+counts <- fread("results/2016-11-07-star-counts.txt", skip = 1)
 glimpse(counts)
 summary(counts)
-
+dim(counts)
 # reformat column names from featureCount output
 names(counts) <- gsub("*-Aligned.sortedByCoord.out.bam", "\\1", names(counts))
 names(counts) <- gsub("data.bam.", "\\1", names(counts))
@@ -43,7 +44,7 @@ names(counts)[names(counts) == "PD6322_C5_YFP"] <- "PD6422_C5_YFP"
 # exclude Chr, Geneid, Start, End, Strand, Length
 non_samples <- paste(names(counts)[1:6], collapse = "|")
 
-read_sum_info <- counts %>% select(-matches(non_samples)) %>%
+read_sum_info <- counts %>% dplyr::select(-matches(non_samples)) %>%
   colSums() %>%
   data.table(total_read_count = .,
              sample_id = names(counts)[7:ncol(counts)]) %>%
@@ -52,11 +53,11 @@ read_sum_info <- counts %>% select(-matches(non_samples)) %>%
 read_sum_info
 
 read_sum_info %>% summarize(read_mean = mean(total_read_count))
-# 35.65e6
+# 29.1e6
 
 # convert to counts per million and plot distribution removing outlier dots
 counts %>%
-  select(-matches(non_samples)) %>%
+  dplyr::select(-matches(non_samples)) %>%
   cpm() %>%
   data.table() %>%
   mutate_all(funs(log2(. + 1))) %>%
@@ -68,24 +69,26 @@ dev.off()
 
 # drop samples with less than 1e6 total reads and keep Geneid
 (poor_samples <- read_sum_info %>%
-  filter(read_sum < 1e6) %>%
-  select(sample_id) %>%
+  filter(total_read_count < 1e6) %>%
+  dplyr::select(sample_id) %>%
   unlist() %>%
   paste(., collapse = "|"))
 non_geneid <- paste(names(counts)[2:5], collapse = "|")
 
 sub_counts <- counts %>%
-  select(-matches(non_geneid))
-sub_counts
+  dplyr::select(-matches(non_geneid))
+
 
 # convert counts to TPM (function found in src/functions.R)
 tpm <- STAR_to_TPM(sub_counts)
 dim(tpm)
-# 23513 11
+# 23513 18
 # save to data/
 export(tpm, file = paste0("data/", Sys.Date(), "-tpm.csv"))
 
+
 # create annotation table
+names <- names(tpm)[grep("PD", names(tpm))]
 (annotation <- data.table(sample_id = names(tpm)[grep("PD", names(tpm))],
                           primary = stringr::str_split_fixed(names, "_", 2)[,1],
                           yfp_bulk = regmatches(names(tpm), regexpr("(BULK|YFP)", names(tpm), perl = TRUE))))
@@ -97,17 +100,6 @@ annotation <- left_join(annotation, read_sum_info)
   geom_point(size = 4, aes(col = yfp_bulk)) + theme(legend.position = "bottom"))
 
 # ggsave(pca_su, file = )
-
-# heatmap of same genes as in PCA
-anno_df <- data.frame(annotation, row.names = annotation[,1])
-
-pheatmap::pheatmap(tpm_pca, scale = "row", fontsize_col = 6,
-                   show_rownames = FALSE,
-                   annotation_names_col = FALSE,
-                   clustering_distance_rows = "correlation",
-                   clustering_distance_cols = "correlation",
-                   annotation_col = anno_df[, c("yfp_bulk", "moffitt_tumor_type", "moffitt_stromal_type")],
-                   file = "results/PCA-heatmap.pdf")
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 #

@@ -87,21 +87,27 @@ Immune_PDA_Signature <- list(aDC = immunome[immunome$cell_type == "aDC", ]$Genei
                              CYT_index = immunome[immunome$cell_type == "CYT_index", ]$Geneid,
                              Immune_suppression_index = immunome[immunome$cell_type == "Immune_suppression_index", ]$Geneid)
 
-immunome_tpm <- tpm %>% filter(Geneid %in% immunome$Geneid) %>% select(matches("Geneid|BULK")) %>% data.frame()
+immunome_tpm <- tpm %>% filter(Geneid %in% immunome$Geneid) %>% dplyr::select(matches("Geneid|BULK")) %>% data.frame()
 row.names(immunome_tpm) <- immunome_tpm$Geneid
 immunome_tpm$Geneid <- NULL
 
 immunome_tpm <- log2(immunome_tpm + 1)
 # isexpr <- rowSums(immunome_tpm) >= 1 ) >= ncol(immunome_tpm) * 0.3
 isexpr <- rowSums(immunome_tpm) >= 1
-
+dim(immunome_tpm)
 # gene set variation analysis 
 gsva_immunome <- gsva(as.matrix(immunome_tpm[isexpr,]), Immune_PDA_Signature, 
                       rnaseq = TRUE, verbose = TRUE, mx.diff = TRUE)$es.obs
 
-pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "firebrick3"))(2345),
-                   annotation_col = anno_df[, c("yfp_bulk", "Moffitt_Tumor_type", "Moffitt_Stromal_type")])
+# heatmap of same genes as in PCA
+anno_df <- data.frame(annotation, row.names = annotation[,1])
 
+pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "firebrick3"))(2345),
+                   annotation_col = anno_df[, c("yfp_bulk", "moffitt_tumor_type", "bailey_type","moffitt_stromal_type")],
+                   main = "Immunome Gene Set Enrichment",
+                   file = "results/2016-11-08-Immunome-GSVA.pdf",
+                   width = 12, height = 8)
+                   
 #-------------------------------------------------------------------------------------------------------------------------------
 #
 # GSVA enrichment with Broad datasets
@@ -135,7 +141,7 @@ gsva_tpm$hgnc_symbol <- NULL
 # filter out lowly expressed genes and select BULK samples 
 isexpr <- (rowSums(cpm(gsva_tpm) >= 1) >= 3)
 gsva_tpm <- gsva_tpm[isexpr,] %>% dplyr::select(matches("BULK"))
-
+dim(gsva_tpm)
 #  GSVA versus biocarta, kegg, CGP, REACTOME, Immune-GSEA 
 biocart_gsva <- gsva(as.matrix(gsva_tpm), biocart$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
 kegg_gsva    <- gsva(as.matrix(gsva_tpm), kegg$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
@@ -149,42 +155,42 @@ rownames(annotation_df) <- annotation_df$sample_id
 annotation_df$sample_id <- NULL
 pheatmap::pheatmap(biocart_gsva, scale = "row", 
                    clustering_method = "complete", 
-                   annotation_col = annotation_df[,c(1,2,4)], 
+                   annotation_col = annotation_df[,c(4:6)], 
                    clustering_distance_rows = "correlation", 
                    show_rownames = F, 
-                   # file = paste0("Results/",Sys.Date(),"-GSVA-biocart-primary.pdf"),
+                   file = paste0("Results/2015-11-08-GSVA-biocart-primary.pdf"),
                    width = 10, height = 8)
 
 pheatmap::pheatmap(kegg_gsva, scale = "row", 
                    clustering_method = "complete", 
-                   annotation_col = annotation_df[,c(1,2,4)], 
+                   annotation_col = annotation_df[,c(4:6)], 
                    clustering_distance_rows = "correlation", 
                    show_rownames = F,
-                   # file = paste0("Results/",Sys.Date(),"-GSVA-keggprimary.pdf"),
+                   file = paste0("Results/2016-11-08-GSVA-keggprimary.pdf"),
                    width = 10, height = 8)
 
 pheatmap::pheatmap(cgp_gsva, scale = "row", 
                    clustering_method = "complete",
-                   annotation_col = annotation_df[,c(1,2,4)], 
+                   annotation_col = annotation_df[,c(4:6)], 
                    clustering_distance_rows = "correlation", 
                    show_rownames = F,
-                   # file = paste0("Results/",Sys.Date(),"-GSVA-cgp-primary.pdf"),
+                   file = paste0("Results/2016-11-08-GSVA-cgp-primary.pdf"),
                    width = 10, height = 8)
 
 pheatmap::pheatmap(react_gsva, scale = "row", 
                    clustering_method = "complete", 
-                   annotation_col = annotation_df[,c(1,2,4)], 
+                   annotation_col = annotation_df[,c(4:6)], 
                    clustering_distance_rows = "correlation", 
                    show_rownames = F, 
-                   # file = paste0("Results/",Sys.Date(),"-GSVA-react-primary.pdf"), 
+                   file = paste0("Results/2016-11-08-GSVA-react-primary.pdf"), 
                    width = 10, height = 8)
 
 pheatmap::pheatmap(immune_gsva, scale = "row", 
                    clustering_method = "complete", 
-                   annotation_col = annotation_df[,c(1,2,4)], 
+                   annotation_col = annotation_df[,c(4:6)], 
                    clustering_distance_rows = "correlation", 
                    show_rownames = F, 
-                   # file = paste0("Results/",Sys.Date(),"-GSVA-immune-primary.pdf"), 
+                   file = paste0("Results/2016-11-08-GSVA-immune-primary.pdf"), 
                    width = 10, height = 8)
 
 
@@ -195,14 +201,14 @@ pheatmap::pheatmap(immune_gsva, scale = "row",
 #-------------------------------------------------------------------------------------------------------------------------------
 
 # create design matrix and contrast matrix using moffitt tumor type definitions
-p_m <- paste(annotation[match(names(gsva_tpm), annotation$sample_id), ]$moffitt_tumor_type, sep = '')
+p_m <- paste(annotation[match(names(gsva_tpm), annotation$sample_id), ]$bailey_type, sep = '')
 p_m <- factor(p_m)
 p_m
 
 pm_design <- model.matrix(~0+p_m)
-colnames(pm_design) <- c("Basal_like", "Classical")
+colnames(pm_design) <- c("Pancreatic_Progenitor","Squamous")
 pm_design
-ContrastMatrix <- limma::makeContrasts(Basal_like-Classical, levels = pm_design)
+ContrastMatrix <- limma::makeContrasts(Squamous-Pancreatic_Progenitor, levels = pm_design)
 
 # function to run statistical tests of GSVA results against subtype level consensus clustering (found in src/functions.R)
 # immune GSEA gene set
