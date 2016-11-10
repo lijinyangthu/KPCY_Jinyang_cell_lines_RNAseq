@@ -12,8 +12,8 @@ source("src/functions.R")
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 #
 # set graphics parameters
-op <- par(mar = c(8, 5, 4, 2)+ 0.1)
-options(op)
+# op <- par(mar = c(8, 5, 4, 2)+ 0.1)
+# options(op)
 # set seed for reproducibility
 set.seed(123)
 #
@@ -49,6 +49,10 @@ moffitt
 # only primary tumors
 # clustering_tpm_moffitt <- tpm %>% filter(Geneid %in% moffitt$Geneid) %>% dplyr::select(matches("YFP")) %>% data.frame()
 
+#------------------------------------------------------------------------------------------------------------------------------------------------------
+#  start here
+#------------------------------------------------------------------------------------------------------------------------------------------------------
+
 # all samples
 clustering_tpm_moffitt <- tpm %>% filter(Geneid %in% moffitt$Geneid) %>% data.frame()
 
@@ -79,7 +83,7 @@ dt_icl %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 clust1 <- dt_icl %>%
   filter(k == 2 & itemConsensus > 0.7 & cluster == 1) %>%
   dplyr::select(cluster, item, itemConsensus)
-clust1 # 15
+clust1 # 22
 
 # select sample in cluster 2 with consensus score greater than 0.9
 clust2 <- dt_icl %>%
@@ -134,7 +138,7 @@ moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(log_stromal), maxK = 4, re
 # extract item consensus
 icl_strom <- calcICL(moffitt_stromal_res, title = title, plot = "pdf")
 icl_strom[["clusterConsensus"]]
-# group 3?
+# group 2
 dt_strom <- data.table(icl_strom$itemConsensus)
 dt_strom %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 
@@ -145,7 +149,7 @@ dt_strom %>% filter(k == 2 & cluster == 2) %>% summarise(range = mean(itemConsen
 (clust1_strom <- dt_strom %>%
   filter(k == 2 & itemConsensus > 0.6 & cluster == 1) %>%
   dplyr::select(cluster, item, itemConsensus))#  %>% summarise(n_dist = n_distinct(item))
-#  5
+#  8
 
 # select sample in cluster 2 with consensus score greater than 0.4
 (clust2_strom <- dt_strom %>%
@@ -218,17 +222,18 @@ dt_icl <- as_tibble(icl$itemConsensus)
 dt_icl %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 
 # select sample in cluster 1 with consensus score greater than 0.9
+dt_icl %>% filter(k == 3 & cluster == 2) %>% data.frame()
 (bailey_1 <- 
     dt_icl %>% 
-    filter(k == 2 & itemConsensus > 0.5 & cluster == 1) %>% 
+    filter(k == 3 & itemConsensus > 0.5 & cluster == 1) %>% 
     dplyr::select(cluster, item, itemConsensus)# %>% summarise(n_dist = n_distinct(item))
 )
-# 14
+# 19
 
 # select sample in cluster 2 with consensus score greater than 0.9
 (bailey_2 <- 
     dt_icl %>% 
-    filter(k == 2 & itemConsensus > 0.5 & cluster == 2) %>% 
+    filter(k == 3 & itemConsensus > 0.5 & cluster == 2) %>% 
     dplyr::select(cluster, item, itemConsensus)) # %>% summarise(n_dist = n_distinct(item))
 # 3
 
@@ -252,8 +257,12 @@ annotation$bailey_type[annotation$sample_id %in% bailey_2$item] <- "Squamous"
 annotation$moffitt_stromal_type[annotation$sample_id %in% clust1_strom$item] <- "Stromal 1"
 annotation$moffitt_stromal_type[annotation$sample_id %in% clust2_strom$item] <- "Stromal 2"
 annotation$moffitt_stromal_type[annotation$yfp_bulk == "YFP"] <- "NA"
+annotation$bailey_type[annotation$sample_id == "PD6566_C3_YFP"] <- "unknown"
+annotation$bailey_type[annotation$sample_id == "PD7160_C5_BULK"] <- "unknown"
 
 annotation %>% filter(yfp_bulk == "BULK")
+annotation
+
 
 export(annotation, file = paste0("results/", Sys.Date(), "-annotation.csv"))
 

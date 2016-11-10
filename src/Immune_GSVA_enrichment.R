@@ -105,7 +105,7 @@ anno_df <- data.frame(annotation, row.names = annotation[,1])
 pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "firebrick3"))(2345),
                    annotation_col = anno_df[, c("yfp_bulk", "moffitt_tumor_type", "bailey_type","moffitt_stromal_type")],
                    main = "Immunome Gene Set Enrichment",
-                   file = "results/2016-11-08-Immunome-GSVA.pdf",
+                   file = "results/2016-11-10-Immunome-GSVA.pdf",
                    width = 12, height = 8)
                    
 #-------------------------------------------------------------------------------------------------------------------------------
@@ -206,7 +206,7 @@ p_m <- factor(p_m)
 p_m
 
 pm_design <- model.matrix(~0+p_m)
-colnames(pm_design) <- c("Pancreatic_Progenitor","Squamous")
+colnames(pm_design) <- c("Pancreatic_Progenitor","Squamous", "unknown")
 pm_design
 ContrastMatrix <- limma::makeContrasts(Squamous-Pancreatic_Progenitor, levels = pm_design)
 

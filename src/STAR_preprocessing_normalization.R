@@ -18,7 +18,7 @@ unloadNamespace("GenomicFeatures")
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 #
 # set graphics parameters
-op <- par(mar = c(8, 5, 4, 2)+ 0.1)
+op <- par(mar = c(10, 5, 2, 2)+ 0.1)
 options(op)
 # set seed for reproducibility
 set.seed(123)
@@ -26,11 +26,11 @@ set.seed(123)
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # extract gene exon length info from gtf (function found in src/functions.r)
-gene_length_info <- gene_exon_length("data/genes.gtf")
-names(gene_length_info)[1] <- "Geneid"
+# gene_length_info <- gene_exon_length("data/genes.gtf")
+# names(gene_length_info)[1] <- "Geneid"
 
 # use data.table fread to load file.  will be loaded as a data.table.  ??data.table
-counts <- fread("results/2016-11-07-star-counts.txt", skip = 1)
+counts <- fread("data/2016-11-10-star-counts.txt", skip = 1)
 glimpse(counts)
 summary(counts)
 dim(counts)
@@ -53,7 +53,7 @@ read_sum_info <- counts %>% dplyr::select(-matches(non_samples)) %>%
 read_sum_info
 
 read_sum_info %>% summarize(read_mean = mean(total_read_count))
-# 29.1e6
+# 33.5e6
 
 # convert to counts per million and plot distribution removing outlier dots
 counts %>%
@@ -82,7 +82,7 @@ sub_counts <- counts %>%
 # convert counts to TPM (function found in src/functions.R)
 tpm <- STAR_to_TPM(sub_counts)
 dim(tpm)
-# 23513 18
+# 23513 25
 # save to data/
 export(tpm, file = paste0("data/", Sys.Date(), "-tpm.csv"))
 

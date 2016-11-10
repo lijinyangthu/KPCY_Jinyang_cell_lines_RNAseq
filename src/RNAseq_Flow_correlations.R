@@ -24,4 +24,5 @@ setnames(flowdata, c("CD4_T_cells", "CD8_T_cels", "gMDSCs", "DCs", "CD4_CD8_null
 flowdata <- flowdata[, sample_id := corrected_names]
 
 
-left_join(annotation, flowdata, by = "sample_id") %>% filter(yfp_bulk == "BULK")
+left_join(annotation, flowdata, by = "sample_id") %>% filter(yfp_bulk == "BULK") %>% select(sample_id, bailey_type, F480_macrophages)
+left_join(annotation, flowdata, by = "sample_id") %>% filter(yfp_bulk == "BULK" & bailey_type == "Pancreatic_Progenitor") %>% select(sample_id, F480_macrophages)
