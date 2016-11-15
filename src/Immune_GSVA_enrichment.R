@@ -34,7 +34,7 @@ set.seed(123)
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-signature <- read.table("data/bindea_genesig.txt", 
+signature <- read.table("data/bindea_Immunome_Signature.txt",
                         header = TRUE, sep = "\t", 
                         col.names = c("cell_type", "hgnc_symbol"))
 names(signature)
@@ -91,21 +91,24 @@ immunome_tpm <- tpm %>% filter(Geneid %in% immunome$Geneid) %>% dplyr::select(ma
 row.names(immunome_tpm) <- immunome_tpm$Geneid
 immunome_tpm$Geneid <- NULL
 
-immunome_tpm <- log2(immunome_tpm + 1)
+
 # isexpr <- rowSums(immunome_tpm) >= 1 ) >= ncol(immunome_tpm) * 0.3
 isexpr <- rowSums(immunome_tpm) >= 1
+# isexpr <- rowSums(immunome_tpm >= 1) >=  10
+
+immunome_tpm <- log2(immunome_tpm[isexpr,] + 1)
 dim(immunome_tpm)
 # gene set variation analysis 
-gsva_immunome <- gsva(as.matrix(immunome_tpm[isexpr,]), Immune_PDA_Signature, 
+gsva_immunome <- gsva(as.matrix(immunome_tpm), Immune_PDA_Signature, 
                       rnaseq = TRUE, verbose = TRUE, mx.diff = TRUE)$es.obs
 
 # heatmap of same genes as in PCA
 anno_df <- data.frame(annotation, row.names = annotation[,1])
 
 pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "firebrick3"))(2345),
-                   annotation_col = anno_df[, c("yfp_bulk", "moffitt_tumor_type", "bailey_type","moffitt_stromal_type")],
+                   annotation_col = anno_df[, c("moffitt_tumor_type", "bailey_type","moffitt_stromal_type")],
                    main = "Immunome Gene Set Enrichment",
-                   file = "results/2016-11-10-Immunome-GSVA.pdf",
+                   file = "results/2016-11-15-Immunome-GSVA.pdf",
                    width = 12, height = 8)
                    
 #-------------------------------------------------------------------------------------------------------------------------------
@@ -113,7 +116,6 @@ pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "f
 # GSVA enrichment with Broad datasets
 #
 #-------------------------------------------------------------------------------------------------------------------------------
-
 biocart <- GSA.read.gmt("data/c2.cp.biocarta.v5.1.symbols.gmt.txt")
 names(biocart$genesets) <- biocart$geneset.names
 
@@ -143,11 +145,11 @@ isexpr <- (rowSums(cpm(gsva_tpm) >= 1) >= 3)
 gsva_tpm <- gsva_tpm[isexpr,] %>% dplyr::select(matches("BULK"))
 dim(gsva_tpm)
 #  GSVA versus biocarta, kegg, CGP, REACTOME, Immune-GSEA 
-biocart_gsva <- gsva(as.matrix(gsva_tpm), biocart$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
-kegg_gsva    <- gsva(as.matrix(gsva_tpm), kegg$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
-cgp_gsva     <- gsva(as.matrix(gsva_tpm), cgp$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
-react_gsva   <- gsva(as.matrix(gsva_tpm), react$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
-immune_gsva   <- gsva(as.matrix(gsva_tpm), immune$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
+biocart_gsva   <- gsva(as.matrix(gsva_tpm), biocart$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
+kegg_gsva      <- gsva(as.matrix(gsva_tpm), kegg$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
+cgp_gsva       <- gsva(as.matrix(gsva_tpm), cgp$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
+react_gsva     <- gsva(as.matrix(gsva_tpm), react$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
+immune_gsva    <- gsva(as.matrix(gsva_tpm), immune$genesets, rnaseq = TRUE, mx.diff = TRUE)$es.obs
 
 # convert annotation data.table to data.frame for heatmap functions
 annotation_df <- data.frame(annotation)
@@ -201,39 +203,39 @@ pheatmap::pheatmap(immune_gsva, scale = "row",
 #-------------------------------------------------------------------------------------------------------------------------------
 
 # create design matrix and contrast matrix using moffitt tumor type definitions
-p_m <- paste(annotation[match(names(gsva_tpm), annotation$sample_id), ]$bailey_type, sep = '')
+p_m <- paste(annotation[match(names(gsva_tpm), annotation$sample_id), ]$moffitt_stromal_type, sep = '')
 p_m <- factor(p_m)
 p_m
 
 pm_design <- model.matrix(~0+p_m)
-colnames(pm_design) <- c("Pancreatic_Progenitor","Squamous", "unknown")
+colnames(pm_design) <- c("Activated","Normal")
 pm_design
-ContrastMatrix <- limma::makeContrasts(Squamous-Pancreatic_Progenitor, levels = pm_design)
+ContrastMatrix <- limma::makeContrasts(Activated-Normal, levels = pm_design)
 
 # function to run statistical tests of GSVA results against subtype level consensus clustering (found in src/functions.R)
 # immune GSEA gene set
 immune_res <- gene_set_statistic_test(gsva_result = immune_gsva, design_matrix = pm_design, contrast_matrix = ContrastMatrix) 
 immune_res %<>% arrange(desc(logFC)) %>% data.table()
 immune_res
-rio::export(immune_res, file = paste0("Results/", Sys.Date(), "-GSVA-immune-bulk.csv"))
+rio::export(immune_res, file = paste0("Results/", Sys.Date(), "-GSVA-immune-bulk-stroma.csv"))
 
 # kegg GSEA gene set
 kegg_res <- gene_set_statistic_test(gsva_result = kegg_gsva, design_matrix = pm_design, contrast_matrix = ContrastMatrix) 
 kegg_res %<>% arrange(desc(logFC)) %>% data.table()
 kegg_res
-rio::export(kegg_res, file = paste0("Results/", Sys.Date(), "-GSVA-kegg-bulk.csv"))
+rio::export(kegg_res, file = paste0("Results/", Sys.Date(), "-GSVA-kegg-bulk-stroma.csv"))
 
 # biocarta GSEA gene set
 biocart_res <- gene_set_statistic_test(gsva_result = biocart_gsva, design_matrix = pm_design, contrast_matrix = ContrastMatrix)
 biocart_res %<>% arrange(desc(logFC)) %>% data.table()
 biocart_res
-rio::export(biocart_res, file = paste0("Results/", Sys.Date(), "-GSVA-biocarta-bulk.csv"))
+rio::export(biocart_res, file = paste0("Results/", Sys.Date(), "-GSVA-biocarta-bulk-stroma.csv"))
 
 # reactome GSEA gene set
 reactome_res <- gene_set_statistic_test(gsva_result = react_gsva, design_matrix = pm_design, contrast_matrix = ContrastMatrix)
 reactome_res %<>% arrange(desc(logFC)) %>% data.table()
 reactome_res
-rio::export(reactome_res, file = paste0("Results/", Sys.Date(), "-GSVA-reactome-bulk.csv"))
+rio::export(reactome_res, file = paste0("Results/", Sys.Date(), "-GSVA-reactome-bulk-stroma.csv"))
 
 
 
