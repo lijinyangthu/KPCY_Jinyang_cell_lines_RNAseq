@@ -29,7 +29,7 @@ REFERENCE="/home/dballi/KPCY_Jinyang_cell_lines/src/reference"
 ANNO="/home/dballi/KPCY_Jinyang_cell_lines/src/reference/genes_mm10_ercc.gtf"
 DATE=`date +'%Y-%m-%d'`
 
-# load files into array
+# load basename of fastq files into array and run  a 'for loop' using STAR for alignment of each read pair
 declare -a samples=(`find data/fastq/ -maxdepth 1 -name "*_R1.trim.fastq.gz" | xargs -n1 -I "{}" basename {} _R1.trim.fastq.gz`)
 
 for i in "${samples[@]}"
@@ -45,6 +45,7 @@ do
    --outFileNamePrefix data/bam/"$i"-
 done
 
+# using featureCounts (from Subread package) to bin fastq reads to gene features using mm10 gtf file
 featureCounts \
 -T 16 \
 -p \

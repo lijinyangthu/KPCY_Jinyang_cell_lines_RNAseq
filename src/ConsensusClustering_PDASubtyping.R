@@ -1,5 +1,11 @@
-# Consensus clustering of KPCY cell lines versus Moffitt tumor signatures (Tumor and Stroma)
-
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
+# script 2 for analysis of KPCY cell lines
+# Consensus clustering of KPCY cell lines versus Moffitt tumor signatures (Tumor and Stroma) and Bailey signatures
+# references for both gene sets taken from publications:
+# Moffitt manuscript - Nature Genetics, Virtual microdissection identifies distinct tumor- and stroma-specific subtypes of pancreatic ductal adenocarcinoma, 2015
+# Bailey manuscript  - Nature, Genomic analyses identify molecular subtypes of pancreatic cancer, 2016
+#
+#----------------------------------------------------------------------------------------------------------------------------------------------------------
 library("tidyverse") # loads ggplot2, tibble, tidyr, readr, purr, dplyr
 library("rio")
 library("ConsensusClusterPlus")
@@ -19,7 +25,7 @@ source("src/functions.R")
 set.seed(123)
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
-# library("biomaRt")
+library("biomaRt")
 # need to map mouse MGI symbols to HUGO symbols
 human <- useMart("ENSEMBL_MART_ENSEMBL", dataset = 'hsapiens_gene_ensembl', host = "www.ensembl.org")
 mouse <- useMart("ENSEMBL_MART_ENSEMBL", dataset = 'mmusculus_gene_ensembl', host = "www.ensembl.org")
@@ -47,13 +53,9 @@ moffitt <- right_join(human_mouse_convesion, moffitt, by = "hgnc_symbol") %>%
   unique() %>% data.table()
 moffitt
 
-# only primary tumors
-# clustering_tpm_moffitt <- tpm %>% filter(Geneid %in% moffitt$Geneid) %>% dplyr::select(matches("YFP")) %>% data.frame()
-
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 #  start here
 #------------------------------------------------------------------------------------------------------------------------------------------------------
-
 clustering_tpm_moffitt <- tpm %>% filter(Geneid %in% moffitt$Geneid) %>% data.frame()
 
 # convert to data.frame then matrix for CCP algorithm
@@ -66,7 +68,7 @@ dim(clustering_tpm_moffitt)
 
 log_moffitt <- log2(clustering_tpm_moffitt + 1)
 
-# ConsensusClusterPlus function with K set to 4
+# ConsensusClusterPlus function with K (clusters) set to 4
 title <- "results/consensuscluster-Moffitt/"
 moffitt_res <- ConsensusClusterPlus(as.matrix(log_moffitt), maxK = 4, reps = 1000, pItem = 0.8,
                                pFeature = 1, title = title, clusterAlg = "hc", distance = "pearson",
@@ -80,29 +82,23 @@ icl[["clusterConsensus"]]
 dt_icl <- data.table(icl$itemConsensus)
 dt_icl %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 # 36 total
-# dt_icl %>% filter(k == 3 & cluster == 1 & item == "PD6499_C3_YFP")
-# dt_icl %>% filter(k == 3 & cluster == 2 & item == "PD6499_C3_YFP")
-# dt_icl %>% filter(k == 3 & cluster == 3 & item == "PD6499_C3_YFP")
-# select sample in cluster 1 with consensus score greater than 0.9
+# select sample in cluster 1 with consensus score greater than 0.5
 clust1_classical <- dt_icl %>%
   filter(k == 2 & itemConsensus > 0.5 & cluster == 1) %>%
   dplyr::select(cluster, item, itemConsensus)
-clust1_classical # 34
+clust1_classical # 34 samples
 
-# (clust3_basal <- dt_icl %>% filter(k == 3 & itemConsensus > 0.5 & cluster == 3) %>% 
-#   dplyr::select(cluster, item, itemConsensus))
-# 4
-
-# select sample in cluster 2 with consensus score greater than 0.9
+# select sample in cluster 2 with consensus score greater than 0.5
 clust2_basal <- dt_icl %>%
   filter(k == 2 & itemConsensus > 0.5 & cluster == 2) %>%
   dplyr::select(cluster, item, itemConsensus)
-clust2_basal # 2
+clust2_basal # 2 samples
 
 table(clust2_basal$item %in% clust1_classical$item)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # consensusclusteringplus definiation of KPCX with Moffitt normal and activated stroma types only in BULK samples
+# these gene ids were manually pulled from Moffitt paper figure
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 
 activated_stroma <- data.table(hgnc_symbol = factor(c("SPARC",'COL1A2','COL3A1','POSTN',
@@ -118,7 +114,6 @@ normal_stroma <- data.table(hgnc_symbol = factor(c("FABP4", 'ACTG2','DES','IFG1'
                                             'MYH11','ID4','RSPO3','LMOD1','RBPMS2','PLP1',
                                             'VIT', 'LPHN3','SCRG1','CDH19','RERGL', "ABCA8")),
                             Subtype = "Normal_stroma")
-
 moffitt_stromal <- rbind(normal_stroma, activated_stroma)
 
 moffitt_stromal <- right_join(human_mouse_convesion, moffitt_stromal, by = "hgnc_symbol") %>%
@@ -133,9 +128,10 @@ clustering_tpm_stromal <- tpm %>% filter(Geneid %in% moffitt_stromal$Geneid) %>%
 row.names(clustering_tpm_stromal) <- clustering_tpm_stromal$Geneid
 clustering_tpm_stromal$Geneid <- NULL
 
-isexpr <- rowSums(clustering_tpm_stromal >= 1) >=  10
+isexpr <- rowSums(clustering_tpm_stromal >= 1) >=  4
 clustering_tpm_stromal <- clustering_tpm_stromal[isexpr,]
 log_stromal <- log2(clustering_tpm_stromal + 1)
+
 # ConsensusClusterPlus function
 title <- "results/consensuscluster-Moffitt-stromal/"
 moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(log_stromal), maxK = 4, reps = 1000, pItem = 0.8,
@@ -146,7 +142,7 @@ moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(log_stromal), maxK = 4, re
 # extract item consensus
 icl_strom <- calcICL(moffitt_stromal_res, title = title, plot = "pdf")
 icl_strom[["clusterConsensus"]]
-# group 2 with 2 clsters
+# group 3 with 2 clsters
 dt_strom <- data.table(icl_strom$itemConsensus)
 dt_strom %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 # 17
@@ -168,46 +164,42 @@ dt_strom %>% filter(k == 3 & item == "PD6419_C1_BULK")
   dplyr::select(cluster, item, itemConsensus)) # %>% summarise(n_dist = n_distinct(item))
 # 2
 
-(clust3_strom <- dt_strom %>% 
-    filter(k == 3 & itemConsensus > 0.5 & cluster == 3) %>% 
+(clust3_strom <- dt_strom %>%
+    filter(k == 3 & itemConsensus > 0.5 & cluster == 3) %>%
     dplyr::select(cluster,item, itemConsensus))
-# 2 
+# 2
 
 table(clust3_strom$item %in% clust1_strom$item)
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
-# Bailey only PP, Squamous GP3 signatures, and ADEX
+# Bailey only Pancreatic Progenitor, Squamous GP3 signatures, and ADEX signatures from manuscript
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # GP1 = blue - pancreatic progenitor
-blue <- read.table("~/Projects/KPCY_RNAseq_EMT/Glasgow/blue_pancreatic_progenitor.txt")
-head(blue)
+blue <- read.table("data/blue_pancreatic_progenitor.txt")
 
 # GP3 = Yellow - squamous
-yellow <- read.table("~/Projects/KPCY_RNAseq_EMT/Glasgow/yellow_squamous.txt")
+yellow <- read.table("data/yellow_squamous.txt")
 
-Bailey_GP1_PP = tibble(hgnc_symbol = blue$V1, Subtype = "GP1-Pancreatic Progenitor")
-Bailey_GP3_Squamous <- tibble(hgnc_symbol = yellow$V1, Subtype = "GP3-Squamous")
-Bailey_GP9_ADEX <- tibble(hgnc_symbol = c('REG3G','SYCN','REG1P','SERPINI2','CPB1',
+Bailey_GP1_PP       <- tibble(hgnc_symbol = blue$V1,
+                              Subtype = "GP1-Pancreatic Progenitor")
+Bailey_GP3_Squamous <- tibble(hgnc_symbol = yellow$V1,
+                              Subtype = "GP3-Squamous")
+Bailey_GP9_ADEX     <- tibble(hgnc_symbol = c('REG3G','SYCN','REG1P','SERPINI2','CPB1',
                                    'RP11−331F4.4', 'AQP8','RBPJL','CUZD1','PLA2G1B',
                                    'CLPS','CEL','CELA3B','CELA3A','CTRB1','CTRC',
                                    'CTRB2','PNLIPRP1','CPA1','CPA2'),
-                          Subtype = "GP9-ADEX")
-Bailey_GP10_ADEX <- tibble(hgnc_symbol = c('UNC79', 'GCK','GJD2','SYT4','KCNK16','NOL4',
+                              Subtype = "GP9-ADEX")
+Bailey_GP10_ADEX    <- tibble(hgnc_symbol = c('UNC79', 'GCK','GJD2','SYT4','KCNK16','NOL4',
                                     'SCGN','INS','CABP7','CHGB','BEX1','SVOP',
                                     'ABCC8','HMGCLL1','SLC30A8','SST','CELF3',
                                     'PCSK2','SCG3'),
-                           Subtype = "GP10-ADEX")
-
-
+                              Subtype = "GP10-ADEX")
 bailey_merged <- rbind(Bailey_GP1_PP, Bailey_GP3_Squamous, Bailey_GP9_ADEX, Bailey_GP10_ADEX)
 
 bailey_merged <- right_join(human_mouse_convesion, bailey_merged, by = "hgnc_symbol") %>%
   dplyr::select(Geneid, hgnc_symbol, Subtype) %>%
   unique() %>% na.omit() %>% data.table()
 bailey_merged
-
-# only primary tumors
-# clustering_tpm_stromal <- tpm %>% filter(Geneid %in% bailey_merged$Geneid) %>% dplyr::select(matches("BULK")) %>% data.frame()
 
 # all samples
 clustering_tpm_bail <- tpm %>% filter(Geneid %in% bailey_merged$Geneid) %>% data.frame()
@@ -216,7 +208,7 @@ clustering_tpm_bail <- tpm %>% filter(Geneid %in% bailey_merged$Geneid) %>% data
 row.names(clustering_tpm_bail) <- clustering_tpm_bail$Geneid
 clustering_tpm_bail$Geneid <- NULL
 
-isexpr <- rowSums(clustering_tpm_bail >= 1) >=  10
+isexpr <- rowSums(clustering_tpm_bail >= 1) >=  4
 clustering_tpm_bail <- clustering_tpm_bail[isexpr, ]
 
 log_bail <- log2(clustering_tpm_bail + 1)
@@ -227,7 +219,7 @@ bail_res <- ConsensusClusterPlus(as.matrix(log_bail), maxK = 7, reps = 1000, pIt
                                     pFeature = 1, title = title, clusterAlg = "hc", distance = "pearson",
                                     seed = 42, plot = "pdf")
 
-# 4 clusters with Bailey PDA type signature 
+# 4 clusters with Bailey PDA type signature
 # extract item consensus
 icl <- calcICL(bail_res, title = title, plot = "pdf")
 icl[["clusterConsensus"]]
@@ -236,40 +228,39 @@ dt_icl <- as_tibble(icl$itemConsensus)
 
 dt_icl %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 # 36
-# select sample in cluster 1 with consensus score greater than 0.9
+# select sample in cluster 1 with consensus score greater than 0.5
 dt_icl %>% filter(k == 2 & cluster == 1) %>% data.frame()
-(bailey_1 <- 
-    dt_icl %>% 
-    filter(k == 2 & itemConsensus > 0.5 & cluster == 1) %>% 
-    dplyr::select(cluster, item, itemConsensus)# %>% summarise(n_dist = n_distinct(item))
+(bailey_1 <-
+    dt_icl %>%
+    filter(k == 2 & itemConsensus > 0.5 & cluster == 1) %>%
+    dplyr::select(cluster, item, itemConsensus)
 )
 # 34
 
-# select sample in cluster 2 with consensus score greater than 0.9
-(bailey_2 <- 
-    dt_icl %>% 
-    filter(k == 2 & cluster == 2 & itemConsensus >= 0.5) %>% 
+# select sample in cluster 2 with consensus score greater than 0.5
+(bailey_2 <-
+    dt_icl %>%
+    filter(k == 2 & cluster == 2 & itemConsensus >= 0.5) %>%
     dplyr::select(cluster, item, itemConsensus))
 # 2
 
-dt_icl %>% filter(k==2 ) %>% data.frame()
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # Merged annnotation file for all samples versus selected tumor type definitions
-# 
-# frozen on 11/15/2016
 #
+# frozen on 11/15/2016
+# uncomment to rerun
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # (annotation <- data.table(sample_id = names(tpm)[grep("PD", names(tpm))],
 #                           primary = stringr::str_split_fixed(names, "_", 2)[,1],
 #                           yfp_bulk = regmatches(names(tpm), regexpr("(BULK|YFP)", names(tpm), perl = TRUE))))
 # annotation <- left_join(annotation, read_sum_info)
-# 
+#
 # pda_typing <- data.table(sample_id = colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]),
 #                          moffitt_tumor_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
 #                          bailey_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
 #                          moffitt_stromal_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))))
-# 
-# 
+#
+#
 # # merge with annotation dt from preprocessing
 # annotation <- left_join(annotation, pda_typing, by = "sample_id")
 # annotation$moffitt_tumor_type[annotation$sample_id %in% clust1_classical$item] <- "Classical"
@@ -283,7 +274,7 @@ dt_icl %>% filter(k==2 ) %>% data.frame()
 # annotation$moffitt_stromal_type[annotation$yfp_bulk == "YFP"] <- "NA"
 # annotation$moffitt_tumor_type[annotation$sample_id == "PD6499_C3_YFP"] <- "Classical"
 # annotation$moffitt_stromal_type[annotation$sample_id == "PD6419_C1_BULK"] <- "Normal Stroma"
-# 
+#
 # annotation %>% dplyr::select(-matches("total_read_count")) %>% export(., file = paste0("results/", Sys.Date(), "-annotation.csv"))
 # annotation %>% dplyr::select(-matches("total_read_count")) %>% export(., file = paste0("results/", Sys.Date(), "-annotation.xlsx"))
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
