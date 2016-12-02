@@ -110,7 +110,7 @@ moffitt_stromal <- right_join(human_mouse_convesion, moffitt_stromal, by = "hgnc
 moffitt_stromal
 
 # only primary tumors
-clustering_tpm_stromal <- tpm %>% filter(Geneid %in% moffitt_stromal$Geneid) %>% dplyr::select(matches("BULK")) %>% data.frame()
+clustering_tpm_stromal <- tpm %>% filter(Geneid %in% moffitt_stromal$Geneid) %>% dplyr::select(matches("Geneid|BULK")) %>% data.frame()
 
 # convert to data.frame then matrix for CCP algorithm
 row.names(clustering_tpm_stromal) <- clustering_tpm_stromal$Geneid
@@ -119,7 +119,14 @@ clustering_tpm_stromal$Geneid <- NULL
 isexpr <- rowSums(clustering_tpm_stromal >= 1) >=  4
 clustering_tpm_stromal <- clustering_tpm_stromal[isexpr,]
 log_stromal <- log2(clustering_tpm_stromal + 1)
-
+pheatmap::pheatmap(as.matrix(log_stromal), scale = "row")
+###
+##
+# no clear groups in dataset - subcutaneous is potentitally different microenvironment
+# running code, but not clustering samples as either groups
+#
+##
+###
 # ConsensusClusterPlus function
 title <- "results/consensuscluster-Moffitt-stromal/"
 moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(log_stromal), maxK = 4, reps = 1000, pItem = 0.9,
@@ -232,29 +239,29 @@ dt_icl %>% filter(k == 2 & cluster == 1) %>% data.frame()
 # frozen on 12/02/2016
 # uncomment to rerun
 #------------------------------------------------------------------------------------------------------------------------------------------------------
-# names <- names(tpm)[grep("PD", names(tpm))]
-# (annotation <- data.table(sample_id = names(tpm)[grep("PD", names(tpm))],
-#                           primary = stringr::str_split_fixed(names, "_", 2)[,1],
-#                           yfp_bulk = regmatches(names(tpm), regexpr("(BULK|YFP)", names(tpm), perl = TRUE))))
-# annotation <- left_join(annotation, read_sum_info)
-# # merge with annotation dt from preprocessing
-# pda_typing <- data.table(sample_id = colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]),
-#                          moffitt_tumor_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
-#                          bailey_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
-#                          moffitt_stromal_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))))
-# annotation <- left_join(annotation, pda_typing, by = "sample_id")
-# 
-# annotation$moffitt_tumor_type <- "Classical"
-# # annotation$moffitt_tumor_type[annotation$sample_id %in% clust1_classical$item] <- "Classical"
-# # annotation$moffitt_tumor_type[annotation$sample_id %in% clust2_basal$item] <- "Basal_like"
-# annotation$bailey_type[annotation$sample_id %in% bailey_1$item] <- "Pancreatic_Progenitor"
-# annotation$bailey_type[annotation$sample_id %in% bailey_2$item] <- "Squamous"
+names <- names(tpm)[grep("PD", names(tpm))]
+(annotation <- data.table(sample_id = names(tpm)[grep("PD", names(tpm))],
+                          primary = stringr::str_split_fixed(names, "_", 2)[,1],
+                          yfp_bulk = regmatches(names(tpm), regexpr("(BULK|YFP)", names(tpm), perl = TRUE))))
+annotation <- left_join(annotation, read_sum_info)
+# merge with annotation dt from preprocessing
+pda_typing <- data.table(sample_id = colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]),
+                         moffitt_tumor_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
+                         bailey_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
+                         moffitt_stromal_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))))
+annotation <- left_join(annotation, pda_typing, by = "sample_id")
+
+annotation$moffitt_tumor_type <- "Classical"
+# annotation$moffitt_tumor_type[annotation$sample_id %in% clust1_classical$item] <- "Classical"
+# annotation$moffitt_tumor_type[annotation$sample_id %in% clust2_basal$item] <- "Basal_like"
+annotation$bailey_type[annotation$sample_id %in% bailey_1$item] <- "Pancreatic_Progenitor"
+annotation$bailey_type[annotation$sample_id %in% bailey_2$item] <- "Squamous"
 # annotation$moffitt_stromal_type[annotation$sample_id %in% clust1_strom$item] <- "Normal Stroma"
 # annotation$moffitt_stromal_type[annotation$sample_id %in% clust2_strom$item] <- "Activated Stroma"
 # annotation$moffitt_stromal_type[annotation$yfp_bulk == "YFP"] <- "NA"
-# 
-# annotation %>% export(., file = paste0("results/", Sys.Date(), "-annotation.csv"))
-# annotation %>% export(., file = paste0("results/", Sys.Date(), "-annotation.xlsx"))
+
+annotation %>% export(., file = paste0("results/", Sys.Date(), "-annotation.csv"))
+annotation %>% export(., file = paste0("results/", Sys.Date(), "-annotation.xlsx"))
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 #
 # data should be ready for further analysis
