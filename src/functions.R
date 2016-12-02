@@ -174,7 +174,7 @@ pca_theme <- function(base_size = 12, base_family = "Helvetica") {
 #' immune_res
 #' rio::export(immune_res, file = paste0("Results/", Sys.Date(), "-GSVA-immune-bulk.csv"))
 #'
-gene_set_statistic_test <- function(gsva_result, design_matrix, contrast_matrix){
+gene_set_statistic_test <- function(gsva_result, design_matrix, contrast_matrix, coef){
   packs <- c("limma", "data.table", "edgeR", "tidyverse", "magrittr")
   missing_packs <- setdiff(packs, row.names(installed.packages()))
   if(length(missing_packs >= 1)){
@@ -189,7 +189,7 @@ gene_set_statistic_test <- function(gsva_result, design_matrix, contrast_matrix)
   fit_tmp <- eBayes(fit_tmp)
   print(summary(decideTests(fit_tmp)))
 
-  res <- topTable(fit_tmp, adjust = "BH", sort = "l", n = Inf, p = 0.05)
+  res <- topTable(fit_tmp, coef = coef, adjust = "BH", sort = "l", n = Inf, p = 0.05)
 
   res <- rownames_to_column(res, "Gene_set")
   return(res)
