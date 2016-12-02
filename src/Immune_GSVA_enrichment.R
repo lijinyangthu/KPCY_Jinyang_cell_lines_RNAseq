@@ -108,10 +108,10 @@ gsva_immunome <- gsva(as.matrix(immunome_tpm), Immune_PDA_Signature,
 anno_df <- data.frame(annotation, row.names = annotation[,1])
 
 pheatmap::pheatmap(gsva_immunome, color = colorRampPalette(c("navy", "white", "firebrick3"))(2345),
-                   annotation_col = anno_df[, c("moffitt_tumor_type", "bailey_type","moffitt_stromal_type")],
+                   annotation_col = anno_df[, c("moffitt_tumor_type", "bailey_type")],
                    main = "Immunome Gene Set Enrichment",
-                   file = "results/2016-11-15-Immunome-GSVA.pdf",
-                   width = 12, height = 8)
+                   file = "results/2016-12-02-Immunome-GSVA.pdf",
+                   width = 10, height = 8)
 
 #-------------------------------------------------------------------------------------------------------------------------------
 #
@@ -160,7 +160,7 @@ annotation_df$sample_id <- NULL
 
 pheatmap::pheatmap(biocart_gsva, scale = "row",
                    clustering_method = "complete",
-                   annotation_col = annotation_df[,c(4:6)],
+                   annotation_col = annotation_df[,c(4,5)],
                    clustering_distance_rows = "correlation",
                    show_rownames = F,
                    file = paste0("Results/2015-11-08-GSVA-biocart-primary.pdf"),
@@ -168,7 +168,7 @@ pheatmap::pheatmap(biocart_gsva, scale = "row",
 
 pheatmap::pheatmap(kegg_gsva, scale = "row",
                    clustering_method = "complete",
-                   annotation_col = annotation_df[,c(4:6)],
+                   annotation_col = annotation_df[,c(4,5)],
                    clustering_distance_rows = "correlation",
                    show_rownames = F,
                    file = paste0("Results/2016-11-08-GSVA-keggprimary.pdf"),
@@ -176,7 +176,7 @@ pheatmap::pheatmap(kegg_gsva, scale = "row",
 
 pheatmap::pheatmap(cgp_gsva, scale = "row",
                    clustering_method = "complete",
-                   annotation_col = annotation_df[,c(4:6)],
+                   annotation_col = annotation_df[,c(4,5)],
                    clustering_distance_rows = "correlation",
                    show_rownames = F,
                    file = paste0("Results/2016-11-08-GSVA-cgp-primary.pdf"),
@@ -184,7 +184,7 @@ pheatmap::pheatmap(cgp_gsva, scale = "row",
 
 pheatmap::pheatmap(react_gsva, scale = "row",
                    clustering_method = "complete",
-                   annotation_col = annotation_df[,c(4:6)],
+                   annotation_col = annotation_df[,c(4,5)],
                    clustering_distance_rows = "correlation",
                    show_rownames = F,
                    file = paste0("Results/2016-11-08-GSVA-react-primary.pdf"),
@@ -192,7 +192,7 @@ pheatmap::pheatmap(react_gsva, scale = "row",
 
 pheatmap::pheatmap(immune_gsva, scale = "row",
                    clustering_method = "complete",
-                   annotation_col = annotation_df[,c(4:6)],
+                   annotation_col = annotation_df[,c(4,5)],
                    clustering_distance_rows = "correlation",
                    show_rownames = F,
                    file = paste0("Results/2016-11-08-GSVA-immune-primary.pdf"),

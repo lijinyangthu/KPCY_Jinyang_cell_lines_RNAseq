@@ -28,8 +28,8 @@ set.seed(123)
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # extract gene exon length info from gtf (function found in src/functions.r)
-gene_length_info <- gene_exon_length("data/genes.gtf")
-names(gene_length_info)[1] <- "Geneid"
+# gene_length_info <- gene_exon_length("data/genes.gtf")
+# names(gene_length_info)[1] <- "Geneid"
 
 # use data.table fread to load file.  will be loaded as a data.table.
 counts <- fread("data/2016-11-14-star-counts.txt", skip = 1)
@@ -81,7 +81,7 @@ non_geneid <- paste(names(counts)[2:5], collapse = "|")
 # removing PD6883_C1_BULK because poor library (probably over amplification or to much loaded on nextseq, e.g 100e6 total reads)
 # removing PD6883_C4_BULK as it is a significant outlier for consensus clustering
 sub_counts <- counts %>%
-  dplyr::select(-matches(non_geneid), -matches("PD6883_C1_BULK"), -matches("PD6883_C4_BULK"))
+  dplyr::select(-matches(non_geneid)) #, -matches("PD6883_C1_BULK"), -matches("PD6883_C4_BULK"))
 names(sub_counts)
 dim(sub_counts)
 
@@ -101,36 +101,40 @@ annotation <- left_join(annotation, read_sum_info)
 
 my_palette <- RColorBrewer::brewer.pal(8, "Set2")[3:4]
 # PCA analysis + plot against total YFP or BULK tomorrow (function found in src/functions.R)
-(pca_su <- PCA_analysis(expr_obj = tpm, annotation = annotation, colors = NULL, top_var = 2000) +
-  geom_point(size = 4, aes(col = yfp_bulk)) + theme(legend.position = "bottom") +
+(pca_su <- PCA_analysis(expr_obj = tpm, annotation = annotation, colors = NULL, top_var = 2500) +
+  geom_point(size = 4, aes(col = yfp_bulk)) + ylim(c(-60,60)) + xlim(c(-60,60)) + 
+    theme(legend.position = "bottom") +
     scale_color_manual(values = my_palette))
-ggsave(pca_su, file = "results/2016-11-13-PCA.pdf", width = 6, height = 6)
+ggsave(pca_su, file = "results/2016-11-22-PCA.pdf", width = 6, height = 6)
+
+
+# # heatmap
+# # filter out lowly expressed transcripts - more than 1 tpm in at least 30% of samples
+tpm_yfp <- tpm %>% dplyr::select(contains("Geneid"), contains("YFP"))
+
+isexpr <- rowSums(tpm_yfp >= 1) >= (ncol(tpm_yfp) * 0.3)
+tpm_filt <- tpm_yfp[isexpr,]
+
+# running PCA on 1000 most variable transcripts
+rv <- tpm_filt %>%
+  dplyr::select(-Geneid) %>%
+  rowVars()
+
+top_var <- 2500
+sel <- order(rv, decreasing = TRUE)[1:top_var]
+
+# using data.table syntax to log2 transform only rows in sel and columns not Geneid
+exp_pca <- log2(tpm_filt[sel, !"Geneid", with = FALSE] + 1)
+
+pheatmap::pheatmap(exp_pca, scale = "row",
+                   clustering_method = "complete",
+                   clustering_distance_rows = "correlation",
+                   color = colorRampPalette(c("navy", "white", "firebrick3"))(2345))
+dev.copy(pdf, file = paste0("results/", Sys.Date(), "-KPCY-cell-lines-heatmap.pdf"))
+dev.off()
 
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
 #
 # data should be ready for further analysis
 #
 #----------------------------------------------------------------------------------------------------------------------------------------------------------
-
-
-# # heatmap
-# # filter out lowly expressed transcripts - more than 1 tpm in at least 30% of samples
-# isexpr <- rowSums(tpm >= 1) >= (ncol(tpm) * 0.3)
-# tpm_filt <- tpm[isexpr,]
-#
-# # running PCA on 1000 most variable transcripts
-# rv <- tpm_filt %>%
-#   dplyr::select(-Geneid) %>%
-#   rowVars()
-#
-# sel <- order(rv, decreasing = TRUE)[1:top_var]
-#
-# # using data.table syntax to log2 transform only rows in sel and columns not Geneid
-# exp_pca <- log2(tpm_filt[sel, !"Geneid", with = FALSE] + 1)
-#
-# names <- tpm_filt[sel,]
-# names$Geneid
-# pheatmap::pheatmap(exp_pca, scale = "row",
-#                    clustering_method = "average",
-#                    clustering_distance_rows = "correlation",
-#                    color = colorRampPalette(c("navy", "white", "firebrick3"))(2345))

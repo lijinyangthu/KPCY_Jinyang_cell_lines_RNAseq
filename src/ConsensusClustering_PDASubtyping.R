@@ -137,7 +137,7 @@ moffitt_stromal_res <- ConsensusClusterPlus(as.matrix(log_stromal), maxK = 4, re
 # extract item consensus
 icl_strom <- calcICL(moffitt_stromal_res, title = title, plot = "pdf")
 icl_strom[["clusterConsensus"]]
-# group 2 
+# group 2 but only 1 subtype - kind of a mess 
 dt_strom <- data.table(icl_strom$itemConsensus)
 dt_strom %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
 # 17
@@ -212,26 +212,7 @@ bail_res <- ConsensusClusterPlus(as.matrix(log_bail), maxK = 7, reps = 1000, pIt
 # extract item consensus
 icl <- calcICL(bail_res, title = title, plot = "pdf")
 icl[["clusterConsensus"]]
-# group 2 looks good
-dt_icl <- as_tibble(icl$itemConsensus)
-
-dt_icl %>% dplyr::select(item) %>% summarise(n_dist = n_distinct(item))
-# 36
-# select sample in cluster 1 with consensus score greater than 0.5
-dt_icl %>% filter(k == 2 & cluster == 1) %>% data.frame()
-(bailey_1 <-
-    dt_icl %>%
-    filter(k == 2 & itemConsensus > 0.5 & cluster == 1) %>%
-    dplyr::select(cluster, item, itemConsensus)
-)
-# 34
-
-# select sample in cluster 2 with consensus score greater than 0.5
-(bailey_2 <-
-    dt_icl %>%
-    filter(k == 2 & cluster == 2 & itemConsensus >= 0.5) %>%
-    dplyr::select(cluster, item, itemConsensus))
-# 2
+# group 2 but only one cluster 
 
 #------------------------------------------------------------------------------------------------------------------------------------------------------
 # Merged annnotation file for all samples versus selected tumor type definitions
@@ -247,17 +228,12 @@ annotation <- left_join(annotation, read_sum_info)
 # merge with annotation dt from preprocessing
 pda_typing <- data.table(sample_id = colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]),
                          moffitt_tumor_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
-                         bailey_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))),
-                         moffitt_stromal_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))))
+                         bailey_type = character(length(colnames(tpm[,grep("PD", colnames(tpm)), with = FALSE]))))
 annotation <- left_join(annotation, pda_typing, by = "sample_id")
 
 annotation$moffitt_tumor_type <- "Classical"
-# annotation$moffitt_tumor_type[annotation$sample_id %in% clust1_classical$item] <- "Classical"
-# annotation$moffitt_tumor_type[annotation$sample_id %in% clust2_basal$item] <- "Basal_like"
-annotation$bailey_type[annotation$sample_id %in% bailey_1$item] <- "Pancreatic_Progenitor"
-annotation$bailey_type[annotation$sample_id %in% bailey_2$item] <- "Squamous"
-# annotation$moffitt_stromal_type[annotation$sample_id %in% clust1_strom$item] <- "Normal Stroma"
-# annotation$moffitt_stromal_type[annotation$sample_id %in% clust2_strom$item] <- "Activated Stroma"
+annotation$bailey_type <- "Pancreatic_progenitor"
+
 # annotation$moffitt_stromal_type[annotation$yfp_bulk == "YFP"] <- "NA"
 
 annotation %>% export(., file = paste0("results/", Sys.Date(), "-annotation.csv"))
